@@ -1,4 +1,7 @@
 #!/usr/bin/env python3.6
+''' /usr/local/bin/image_capture is a hard link from ~/chessmate/image_capture.py
+to make it globally accessible as an executable
+'''
 
 import cv2
 import sys
@@ -8,8 +11,6 @@ import numpy as np
 
 from pathlib import Path
 from matplotlib import pyplot as plt
-
-# Add output path and gray scaling to image before saving
 
 def main():
 
@@ -55,8 +56,9 @@ def main():
         elif k%256 == 32:
             img_name = "opencv_frame_{}.png".format(img_counter)
             cv2.imwrite(img_name, gray)
-            print("{} written!".format(img_name))
-            img_counter += 1
+            for i in range(i)
+                print("{} written!".format(img_name))
+                img_counter += 1
 
     cam.release()
 
