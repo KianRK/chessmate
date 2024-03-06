@@ -44,7 +44,8 @@ def main():
             print("failed to grab frame.")
             break
         frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-        dst = cv2.warpAffine(frame, M, (1640, 1232))
+        #dst = cv2.warpAffine(frame, M, (1640, 1232))
+        dst = cv2.warpPerspective(frame, M, (1640, 1232))
         gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
         #_, threshFrame = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
         cv2.imshow("test", gray)
@@ -56,8 +57,9 @@ def main():
         elif k%256 == 32:
             img_name = "chessmate_img_{}.png".format(img_counter)
             cv2.imwrite(img_name, gray)
-            frame = cv2.rotate(frame, cv2.ROTATE_180)
+            gray = cv2.rotate(gray, cv2.ROTATE_180)
             img_name = "chessmate_img_flipped{}.png".format(img_counter) 
+            cv2.imwrite(img_name, gray)
             print("img #{} written".format(img_counter))
             img_counter += 1
 
@@ -76,12 +78,18 @@ def calcTransformation(frame):
     pt2y = int(input('Y-Coordinate of point 2:'))
     pt3x = int(input('X-Coordinate of point 3:'))
     pt3y = int(input('Y-Coordinate of point 3:'))
-
-    originCornerPoints = np.float32([[pt1x,pt1y], [pt2x, pt2y], [pt3x, pt3y]])
-    transformedCornerPoints = np.float32([[0, 0], [1640, 0], [0, 1232]])
+    pt4x = int(input('X-Coordinate of point 4:'))
+    pt4y = int(input('Y-Coordinate of point 4:'))
+  
+    originCornerPoints = np.float32([[pt1x,pt1y], [pt2x, pt2y], [pt3x, pt3y], [pt4x, pt4y]])
+    transformedCornerPoints = np.float32([[0, 0], [1640, 0], [0, 1232], [1640, 1232]])
     
+    M = cv2.getPerspectiveTransform(originCornerPoints, transformedCornerPoints)
 
-    M = cv2.getAffineTransform(originCornerPoints, transformedCornerPoints)
+    #originCornerPoints = np.float32([[pt1x,pt1y], [pt2x, pt2y], [pt3x, pt3y]])
+    #transformedCornerPoints = np.float32([[0, 0], [1640, 0], [0, 1232]])
+
+    #M = cv2.getAffineTransform(originCornerPoints, transformedCornerPoints)
 
     return M
 
