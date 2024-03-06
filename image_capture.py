@@ -56,9 +56,8 @@ def main():
         elif k%256 == 32:
             img_name = "opencv_frame_{}.png".format(img_counter)
             cv2.imwrite(img_name, gray)
-            for i in range(i)
-                print("{} written!".format(img_name))
-                img_counter += 1
+            print("{} written!".format(img_name))
+            img_counter += 1
 
     cam.release()
 
