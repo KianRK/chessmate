@@ -54,9 +54,11 @@ def main():
             print("Escape pressed, closing...")
             break
         elif k%256 == 32:
-            img_name = "opencv_frame_{}.png".format(img_counter)
+            img_name = "chessmate_img_{}.png".format(img_counter)
             cv2.imwrite(img_name, gray)
-            print("{} written!".format(img_name))
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
+            img_name = "chessmate_img_flipped{}.png".format(img_counter) 
+            print("img #{} written".format(img_counter))
             img_counter += 1
 
     cam.release()
