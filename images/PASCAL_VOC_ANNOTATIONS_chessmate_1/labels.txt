@@ -1,0 +1,12 @@
+w_king
+w_queen
+w_bishop
+w_knight
+w_rook
+w_pawn
+b_king
+b_queen
+b_bishop
+b_knight
+b_rook
+b_pawn
