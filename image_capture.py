@@ -8,6 +8,7 @@ import sys
 import argparse
 import os
 import numpy as np
+import datetime
 
 from pathlib import Path
 from matplotlib import pyplot as plt
@@ -48,20 +49,25 @@ def main():
         dst = cv2.warpPerspective(frame, M, (1640, 1232))
         gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
         #_, threshFrame = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
-        cv2.imshow("test", gray)
+        cv2.imshow("view", gray)
 
         k = cv2.waitKey(1)
         if k%256 == 27:
             print("Escape pressed, closing...")
             break
         elif k%256 == 32:
-            img_name = "chessmate_img_{}.png".format(img_counter)
-            cv2.imwrite(img_name, gray)
-            gray = cv2.rotate(gray, cv2.ROTATE_180)
-            img_name = "chessmate_img_flipped{}.png".format(img_counter) 
-            cv2.imwrite(img_name, gray)
-            print("img #{} written".format(img_counter))
-            img_counter += 1
+            now = datetime.datetime.now()
+            timestring = "{}_{}_{}_{}_{}".format(now.day,now.month,now.hour,now.minute,now.second)
+            img_name = "chessmate_img_{}.jpg".format(timestring)
+            gray_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(img_name, gray_rgb)
+            gray_rgb = cv2.rotate(gray_rgb, cv2.ROTATE_180)
+            img_name = "chessmate_img_flipped{}.jpg".format(timestring) 
+            cv2.imwrite(img_name, gray_rgb)
+            print("img from time {} written".format(timestring))
+            print(gray_rgb.shape)
+            if(len(gray_rgb.shape) == 3):
+                print(gray_rgb.shape[2])
 
     cam.release()
 
