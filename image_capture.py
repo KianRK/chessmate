@@ -65,9 +65,6 @@ def main():
             img_name = "chessmate_img_flipped{}.jpg".format(timestring) 
             cv2.imwrite(img_name, gray_rgb)
             print("img from time {} written".format(timestring))
-            print(gray_rgb.shape)
-            if(len(gray_rgb.shape) == 3):
-                print(gray_rgb.shape[2])
 
     cam.release()
 

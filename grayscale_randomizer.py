@@ -42,14 +42,16 @@ def main():
     j = 0
     for i, file in enumerate(image_files):
         image = cv2.imread(file)
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         for j in range(VARIATIONS_PER_IMAGE):
             index = i * VARIATIONS_PER_IMAGE + j
             alpha_string = "{:.2f}".format(alpha_values[index])
             alpha_string= alpha_string.replace(".","_")
             beta_string = "{:.0f}".format(beta_values[index])
-            image_path = os.path.join(args.imagedir,file[:-4]+"a:{},b:{}".format(alpha_string,beta_string)+".png")
+            image_path = os.path.join(args.imagedir,file[:-4]+"a:{},b:{}".format(alpha_string,beta_string)+".jpg")
             variation = cv2.convertScaleAbs(image, alpha=alpha_values[index], beta=beta_values[index])
             print("image path: {}".format(image_path))
+            variation = cv2.cvtColor(variation, cv2.COLOR_GRAY2RGB)
             cv2.imwrite(image_path, variation)
 
 
