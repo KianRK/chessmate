@@ -1,3 +1,9 @@
 backup_space
 test3
 testimages
+images3
+model
+*backup*
+images*
+playaroundinvim.py
+model_test*
