@@ -7,3 +7,4 @@ model
 images*
 playaroundinvim.py
 model_test*
+image_capture_test.py
