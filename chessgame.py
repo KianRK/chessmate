@@ -32,6 +32,9 @@ class Game():
         self.white_kings_field = "e2"
         self.black_kings_field = "e8"
 
+        self.white_can_still_castle = True
+        self.black_can_still_castle = True
+
 
     #method to retrieve the field on which a chess piece is standing on as a list index
     def determine_board_position(self, x, y):
@@ -102,6 +105,21 @@ class Game():
             notation += "#"
 
         return notation
+
+    def document_castle(self, landing_column_index, check_given):
+
+        if(landing_column_index == 6):
+            notation = "0-0"
+
+        else:
+            notation = "0-0-0"
+
+        if(check_given):
+            notation += "#"
+
+        return notation
+
+
 
     def reachable_by_pawn(self, color, row_index, column_index):
 
@@ -237,7 +255,6 @@ class Game():
                         pass
         
         if(color=="b"):
-            print(f"row")
             for i in [-1, 1]:
                 for j in [-1, 1]:
                     row_counter = row_index + i
@@ -403,6 +420,29 @@ class Game():
 
         return check_given
 
+    def check_for_castle(self, color, landing_column_index):
+        
+        if(color=="w"):
+            if(landing_column_index == 6):
+                if(self.new_board[0][5]==5 and self.board[0][5]!=5):
+                    return True
+
+            if(landing_column_index == 2):
+                if(self.new_board[0][3]==5 and self.board[0][3]!=5):
+                    return True
+        
+        if(color=="b"):
+            if(landing_column_index == 6):
+                if(self.new_board[7][5]==11 and self.board[7][5]!=11):
+                    return True
+
+            if(landing_column_index == 2):
+                if(self.new_board[7][3]==11 and self.board[7][3]!=11):
+                    return True
+
+        return False
+
+    def calcTransformation(self, frame, resolution_width, resolution_height):
 
     def calcTransformation(self, frame, resolution_width, resolution_height):
 

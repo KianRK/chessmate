@@ -171,6 +171,28 @@ class TestDetection(unittest.TestCase):
 
         self.assertEqual(res_notation2, expected_notation2)
 
+    def test_document_castle(self):
+
+        game = Game()
+
+        landing_column_index1 = 6
+
+        expected_notation1 = "0-0"
+
+        res_notation1 = game.document_castle(landing_column_index1, False)
+
+        self.assertEqual(res_notation1, expected_notation1)
+
+
+        landing_column_index2 = 2
+        check_given = True
+
+        expected_notation2 = "0-0-0#"
+
+        res_notation2 = game.document_castle(landing_column_index2, check_given)
+
+        self.assertEqual(res_notation2, expected_notation2)
+
     def test_reachable_by_pawn(self):
 
         game = Game()
