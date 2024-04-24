@@ -93,6 +93,14 @@ class TestDetection(unittest.TestCase):
     def test_get_all_reachable_fields(self):
 
         game = Game()
+        
+        game.white_kings_field = "d2"
+        game.white_kings_row_index = 1
+        game.white_kings_column_index = 3
+
+        game.black_kings_field = "c7"
+        game.black_kings_row_index = 6
+        game.black_kings_column_index = 2
 
         game.new_board[0][0] = 5
         game.new_board[1][1] = 3
@@ -123,7 +131,12 @@ class TestDetection(unittest.TestCase):
         expected_fields_white = ["a2","a3", "a4", "a5", "a6", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "c3", "d4", "e5", "e6", "c2", "e2", "e4", "g4", "h3", "b4", "b5", "c4", "g2", "d5", "c6", "b7", "a8", "f4", "h5", "h2", "h4", "h7", "g8", "e8", "d7", "d5"]
         expected_fields_black = ["h8", "f8", "e8", "d8", "c8", "b8", "a8", "g7", "g6", "g5", "g4", "g3", "f5", "h6", "d7", "b7", "b6", "c6", "e7", "e6", "f6", "d5", "d5", "d4", "d3", "e4", "b4", "a5", "a3", "b2", "d2", "e3"]
 
-        res_fields_white, res_fields_black, res_protected_white, res_protected_black = game.get_all_reachable_fields()
+        expected_prot_white = ["a1", "e3", "d3", "b2", "f2", "f5", "g3"]
+        expected_prot_black = ["g8", "c7", "d6", "a6", "b5", "c5", "e5", "c4"]
+
+        expected_giving_check = ["c4"]
+
+        res_fields_white, res_fields_black, res_prot_white, res_prot_black, res_giving_check, res_path_to_king = game.get_all_reachable_fields()
 
 
         for field in expected_fields_white:
@@ -137,6 +150,21 @@ class TestDetection(unittest.TestCase):
         
         for field in res_fields_black:
             self.assertIn(field, expected_fields_black)
+
+        for field in expected_prot_white:
+            self.assertIn(field, res_prot_white)
+
+        for field in res_prot_white:
+            self.assertIn(field, expected_prot_white)
+        
+        for field in expected_prot_black:
+            self.assertIn(field, res_prot_black)
+
+        for field in res_prot_black:
+            self.assertIn(field, expected_prot_black)
+
+        self.assertEqual(res_giving_check, expected_giving_check)
+    
     
     def test_document_move(self):
         

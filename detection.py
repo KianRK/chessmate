@@ -82,6 +82,8 @@ def main():
         #cudaConvertColor(cuda_rgb, cuda_img)
         detections = net.Detect(converted_img)
         display.Render(converted_img)
+        if(key in ["m","d", "n"]):
+            game.update_board(detections, key)
         #cv2.imshow('CV2', cv_img)
         #k = cv2.waitKey(500)
         #if counter%50==0:

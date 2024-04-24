@@ -60,6 +60,8 @@ class Game():
         castle = False
         capture = False
         checkmate = False
+        en_passant = False
+        pawn_promotion = False
 
         for piece in detections:
 
@@ -77,7 +79,6 @@ class Game():
                     self.black_kings_row_index = row_index
                     self.black_kings_column_index = column_index
                     self.black_kings_field = self.get_field_string(row_index, column_index)
-
             # Update the piece on the field
             self.new_board[row_index][column_index] = piece.ClassID
 
@@ -93,21 +94,26 @@ class Game():
                 if(self.board[row_index][column_index] in self.chess_piece_dict):
                     capture = True
 
+        if(moved_piece[0]="P"):
+            en_passant = self.check_for_en_passant(landing_row_index, landing_column_index)
+        elif(landing_row_index%7 == 0):
+            pawn_promotion = self.check_for_pawn_promotion(landing_row_index, landing_column_index)
+
         origin_row_index, origin_column_index = determine_origin(landing_row_index, landing_column_index)
 
-        reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, fields_of_pieces_giving_check = self.get_all_reachable_fields()
+        reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, fields_of_pieces_giving_check, path_to_king = self.get_all_reachable_fields()
         
         check_given = len(field_of_piecex_giving_check > 0)
 
-        if(check_given):
+        '''if(check_given):
             if(moved_color == "w"):
-                checkmate = check_for_mate(reachable_by_white, protected_by_black, fields_of_pieces_giving_check, moved_color)
+                checkmate = check_for_mate(reachable_by_white, reachable_by_black, protected_by_black, fields_of_pieces_giving_check, path_to_king, moved_color)
             else:
-                checkmate = check_for_mate(reachable_by_black, protected_by_white, fields_of_pieces_giving_check, moved_color)
+                checkmate = check_for_mate(reachable_by_white, reachable_by_black, protected_by_white, fields_of_pieces_giving_check, path_to_king, moved_color)
 
-        stalemate = not check_given and len(reachable_by_white) == 0 if moved_color == "w" else not check_given and len(reachable_by_black) == 0
-
-        #check_given = check_for_check(reachable_by_white, reachable_by_black, moved_piece[-1])
+        else:
+            stalemate = len(reachable_by_white) == 0 if moved_color == "w" else len(reachable_by_black) == 0
+'''
 
         if(moved_piece[0] == "K" or moved_piece[0] == "R"):
             castle = self.check_for_castle(moved_piece[-1])
@@ -118,7 +124,7 @@ class Game():
             else:
                 self.black_can_castle = False
 
-        notation = document_move(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_row_index, capture, check_given, castle, mate, draw, stalemate)
+        notation = document_move(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_row_index, capture, check_given, castle, en_passant, pawn_promotion, key)
 
         self.board_history.append(self.board)
         
@@ -127,43 +133,50 @@ class Game():
         key = ""
 
 
-    #method to retrieve the field on which a chess piece is standing on as a list index
-    def determine_board_position(self, x, y):
-        width = 1640/8
-        height = 1232/8
-        horizontal = x//width 
-        vertical = y//height
-        
-        return int(horizontal), int(vertical)
 
-    def determine_origin(self, landing_row, landing_columnn):
-            #Iterate over the board. 
-            for k in range(8):
-                for l in range(8):
-                        
-                #If field in new_board does not store same piece as prev_board and field 
-                #is not the landing field, it should be the origin field
-                    if(self.board[k][l] != self.new_board[k][l] and k!=landing_row and l!=landing_column):
-                        origin_row = k
-                        origin_column = l
+    def document_move(self, moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, capture, castle, check_given, en_passant, pawn_promotion, key):
 
-            return origin_row, origin_column
+        if(castle):
+            notation = self.document_castle(moved_piece[-1], check_given)
+            print(notation)
+            return notation
 
-    def document_move(self, moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, capture, check_given):
-        piece_name = moved_piece
-        piece_letter = piece_name[0]
+        if(en_passant):
+            notation = self.document_en_passant(origin_row_index, origin_column_index, landing_row_index, landing_column_index, check_given)
+            print(notation)
+            return notation
+
+        if(pawn_promotion):
+            notation = self.document_pawn_promotion(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, check_given)
+            print(notation)
+            return notation
+
+        piece_letter = moved_piece[0]
         origin_column = self.vert_file_dict[origin_column_index]
         origin_row = "{}".format(origin_row_index+1)
         landing_column = self.vert_file_dict[landing_column_index]
         landing_row = "{}".format(landing_row_index+1)
+
         if(capture):
+
             notation = piece_letter + origin_column + origin_row + "x" + landing_column + landing_row
         else:
             notation = piece_letter + origin_column + origin_row + "-" + landing_column + landing_row
+        
+        if(key=="m"):
+            notation += "#"
+            print(notation)
+            return notation
+
+        if(key=="d"):
+            notation = "="
+            print(notation)
+            return notation
 
         if(check_given):
             notation += "#"
 
+        print(notation)
         return notation
 
     def document_en_passant(self, origin_row_index, origin_column_index, landing_row_index, landing_column_index, check_given):
@@ -209,8 +222,6 @@ class Game():
             notation += "#"
 
         return notation
-
-
 
     def reachable_by_pawn(self, color, row_index, column_index):
 
@@ -542,7 +553,9 @@ class Game():
                         if(self.black_kings_field in reachable_fields):
                             fields_of_pieces_giving_check.append(self.get_field_string(row_index, column_index))
                             if(first_letter in ["Q","B","R"]):
-                                path_of_threatening_pieces_to_king = get_path_to_king(row_index, column_index, color)
+                                path_to_king = get_path_to_king(row_index, column_index, color)
+                                path_of_threatening_pieces_to_king = get_path_to_king(path_to_king)
+
                     if(color == "b"):
                         reachable_by_black.extend(reachable_fields)
                         protected_by_black.extend(protected_fields)
@@ -552,10 +565,19 @@ class Game():
                             if(first_letter in ["Q","B","R"]):
                                 path_to_king = get_path_to_king(row_index, column_index, color)
                                 path_of_threatening_pieces_to_king.extend(path_to_king)
+        
+        '''reachable_by_white_king = self.reachable_by_king("w", self.white_kings_row_index, self.white_kings_column_index)
+        for field in reachable_by_white_king:
+            if field in reachable_by_black+protected_by_black:
+                reachable_by_white.remove(field)
 
+        reachable_by_black_king = self.reachable_by_king("b", self.black_kings_row_index, self.black_kings_column_index)
+        for field in reachable_by_black_king:
+            if field in reachable_by_white+protected_by_white:
+                reachable_by_black.remove(field)
+            '''
 
-
-        return reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, path_of_threatening_pieces_to_king
+        return reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, fields_of_pieces_giving_check, path_of_threatening_pieces_to_king
 
     def get_path_to_king(self, row_index, column_index, color):
 
@@ -596,9 +618,33 @@ class Game():
 
 
     def check_for_check(self, reachable_by_white, reachable_by_black, color):
+        
         check_given = self.black_kings_field in reachable_by_white if color == "w" else self.white_kings_field in reachable_by_black
 
         return check_given
+
+    def check_for_en_passant(self, landing_row_index, landing_column_index):
+
+        if(landing_row_index == 5):
+            if(self.new_board[4][landing_column_index] != self.board[4][landing_column_index]):
+                return True
+        if(landing_row_index == 2):
+            if(self.new_board[3][landing_column_index] != self.board[3][landing_column_index]):
+                return True
+
+        return False
+
+    def check_for_pawn_promotion(self, landing_row_index, landing_column_index):
+
+        if(landing_row_index == 7):
+            if(self.new_board[6][landing_column_index]==0 and self.board[6][landing_column_index]==6):
+                return True
+
+        if(landing_row_index == 2):
+            if(self.new_board[3][landing_column_index]==0 and self.board[3][landing_column_index]==12):
+                return True
+
+        return False
 
     def check_for_castle(self, color):
         
@@ -622,19 +668,35 @@ class Game():
 
         return False
 
-    def check_for_mate(reachable_fields, protected_by_opponent, fields_of_pieces_giving_check, color):
+    def check_for_mate(self, reachable_by_white, reachable_by_black, protected_by_opponent, fields_of_pieces_giving_check, path_to_king, color):
         
-        kings_field = self.black_kings_field if color == "w" else self.white_kings_field
+        if(color == "w"):
+            kings_field = self.black_kings_field
+            kings_row_index = self.black_kings_row_index
+            kings_column_index = self.black_kings_column_index
+            reachable_by_black_king = self.reachable_by_king("b", kings_row_index, kings_column_index)
+            for field in reachable_by_black_king:
+                if(field in reachable_by_white+protected_by_white):
+                    reachable_by_black_king.remove(field)
+                    reachable_by_black.remove(field)
+            if(len(reachable_by_black_king) == 0):
+                if(len(fields_of_pieces_giving_check) == 1):
+                    for field in reachable_by_white:
+                        if(field in fields_of_pieces_giving_check+path_to_king):
+                            return False
+                        else:
+                            return True
 
-        # Checken des Pfades irgendwie implementieren
-        # 
+
 
         '''
         die Felder die der König erreichen kann sind reachable - protected - reachable Gegner
         und die Schach gebenden Felder > 1 oder nicht in reachable Freund
+        
+        Matt wenn Checking_pieces > 1 und König keine Felder zum ausweichen hat
+
+        oder wenn Checkin_pieces = 1 und König keine Felder zum Ausweichen hat, und Checking_piece und Path nicht erreichbar sind
         '''
-
-
 
     def calcTransformation(self, frame, resolution_width, resolution_height):
 
@@ -665,3 +727,24 @@ class Game():
         
         return M
 
+    #method to retrieve the field on which a chess piece is standing on as a list index
+    def determine_board_position(self, x, y):
+        width = 1640/8
+        height = 1232/8
+        horizontal = x//width 
+        vertical = y//height
+        
+        return int(horizontal), int(vertical)
+
+    def determine_origin(self, landing_row, landing_columnn):
+            #Iterate over the board. 
+            for k in range(8):
+                for l in range(8):
+                        
+                #If field in new_board does not store same piece as prev_board and field 
+                #is not the landing field, it should be the origin field
+                    if(self.board[k][l] != self.new_board[k][l] and k!=landing_row and l!=landing_column):
+                        origin_row = k
+                        origin_column = l
+
+            return origin_row, origin_column
