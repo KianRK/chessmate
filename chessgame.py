@@ -8,6 +8,7 @@ import copy
 
 from CustomExceptions import IndexException
 
+from math import copysign
 from jetson_inference import detectNet
 from jetson_utils import (cudaAllocMapped, cudaConvertColor, cudaFromNumpy, videoOutput, videoSource, cudaImage, cudaMemcpy, cudaDeviceSynchronize)
 from pynput import keyboard
@@ -17,6 +18,8 @@ class Game():
         
     def __init__(self):
         self.board = np.array([[5,4,3,2,1,3,4,5],[6,6,6,6,6,6,6,6],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[12,12,12,12,12,12,12,12],[11,10,9,8,7,9,10,11]], np.int16)
+        
+        self.board_history = []
 
         self.new_board = np.zeros((8,8), np.int16)
         
@@ -26,14 +29,102 @@ class Game():
 
         self.reachable_field_function_dict = {"K":self.reachable_by_king,"Q":self.reachable_by_queen,"B":self.reachable_by_bishop_or_diagonal,"N":self.reachable_by_knight,"R":self.reachable_by_rook_or_straight,"P":self.reachable_by_pawn}
         
+        self.document_move_function_dict = {"c":self.document_castle,"e":self.document_en_passant,"p":self.document_pawn_promotion}
+
         self.white_piece_numbers = [1,2,3,4,5,6]
         self.black_piece_numbers = [7,8,9,10,11,12]
 
         self.white_kings_field = "e2"
-        self.black_kings_field = "e8"
+        self.white_kings_row_index = 0
+        self.white_kings_column_index = 4
 
-        self.white_can_still_castle = True
-        self.black_can_still_castle = True
+        self.black_kings_field = "e8"
+        self.black_kings_row_index = 7
+        self.black_kings_column_index = 4
+
+        self.white_can_castle = True
+        self.black_can_castle = True
+    
+    def update_board(self, detections, key):
+        moved_piece = ""
+        moved_color = ""
+        reachable_by_white = []
+        protected_by_white = []
+        reachable_by_black = []
+        protected_by_black = []
+        fields_of_pieces_giving_check = []
+        landing_column_index = 0
+        landing_row_index = 0
+        origin_column_index = 0
+        origin_row_index = 0
+        castle = False
+        capture = False
+        checkmate = False
+
+        for piece in detections:
+
+            #Get the detected pieces box horizontal and vertical center and retrieve according field
+            x = piece.Center[0]
+            y = piece.Center[1]
+            row_index, column_index = determine_board_position(x,y)
+
+            if(piece.ClassID%6==1):
+                if(piece.ClassID==1):
+                    self.white_kings_row_index = row_index
+                    self.white_kings_column_index = column_index
+                    self.white_kings_field = self.get_field_string(row_index, column_index)
+                if(piece.ClassID==7):
+                    self.black_kings_row_index = row_index
+                    self.black_kings_column_index = column_index
+                    self.black_kings_field = self.get_field_string(row_index, column_index)
+
+            # Update the piece on the field
+            self.new_board[row_index][column_index] = piece.ClassID
+
+            #If the currently stored piece is not the same as the detected piece, store the information for documentation.
+
+            if(self.board[row_index][column_index] != piece.ClassID):
+                moved_piece = self.chess_piece_dict[piece.ClassID]
+                landing_row_index = row_index
+                landing_column_index = column_index
+                moved_color = moved_piece[-1]
+            
+            #If the field has not been empty previously, flag the move as a capture
+                if(self.board[row_index][column_index] in self.chess_piece_dict):
+                    capture = True
+
+        origin_row_index, origin_column_index = determine_origin(landing_row_index, landing_column_index)
+
+        reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, fields_of_pieces_giving_check = self.get_all_reachable_fields()
+        
+        check_given = len(field_of_piecex_giving_check > 0)
+
+        if(check_given):
+            if(moved_color == "w"):
+                checkmate = check_for_mate(reachable_by_white, protected_by_black, fields_of_pieces_giving_check, moved_color)
+            else:
+                checkmate = check_for_mate(reachable_by_black, protected_by_white, fields_of_pieces_giving_check, moved_color)
+
+        stalemate = not check_given and len(reachable_by_white) == 0 if moved_color == "w" else not check_given and len(reachable_by_black) == 0
+
+        #check_given = check_for_check(reachable_by_white, reachable_by_black, moved_piece[-1])
+
+        if(moved_piece[0] == "K" or moved_piece[0] == "R"):
+            castle = self.check_for_castle(moved_piece[-1])
+
+        if(castle):
+            if(moved_color == "w"):
+                self.white_can_castle = False
+            else:
+                self.black_can_castle = False
+
+        notation = document_move(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_row_index, capture, check_given, castle, mate, draw, stalemate)
+
+        self.board_history.append(self.board)
+        
+        self.board = self.new_board
+ 
+        key = ""
 
 
     #method to retrieve the field on which a chess piece is standing on as a list index
@@ -106,13 +197,13 @@ class Game():
 
         return notation
 
-    def document_castle(self, landing_column_index, check_given):
+    def document_castle(self, color, check_given):
 
-        if(landing_column_index == 6):
-            notation = "0-0"
-
+        if(color=="w"):
+            notation = "0-0" if(self.new_board[0][5]!=self.board[0][5]) else "0-0-0"
+        
         else:
-            notation = "0-0-0"
+            notation = "0-0" if(self.new_board[7][5]!=self.board[7][5]) else "0-0-0"
 
         if(check_given):
             notation += "#"
@@ -124,6 +215,7 @@ class Game():
     def reachable_by_pawn(self, color, row_index, column_index):
 
         reachable_fields = []
+        protected_fields = []
 
         if(color == "w"):
             # If field in front is empty pawn can move to field
@@ -132,36 +224,25 @@ class Game():
                 reachable_fields.append(field)
             # If pawn is not in "A" file and front right field as enemy piece it can be captured
             try:
-                if(self.new_board[row_index+1][column_index+1] in self.black_piece_numbers):
-                    field =self.get_field_string(row_index+1, column_index+1)
-                    reachable_fields.append(field)
-            except (KeyError, IndexError) as e:
+                for i in [-1,1]:
+                    field =self.get_field_string(row_index+1, column_index+i)
+                    if(self.new_board[row_index+1][column_index+i] in self.black_piece_numbers):
+                        reachable_fields.append(field)
+                    elif(self.new_board[row_index+1][column_index+i] in self.white_piece_numbers):
+                        protected_fields.append(field)
+            except (KeyError, IndexError, IndexException) as e:
                 pass
 
-            # If pawn is not in "A" file and front left field as enemy piece it can be captured
-            try:
-                if(self.new_board[row_index+1][column_index-1] in self.black_piece_numbers):
-                    field =self.get_field_string(row_index+1, column_index-1)
-                    reachable_fields.append(field)
-            except (KeyError, IndexError) as e:
-                pass
             
             # En passant only possible for white pawn in 5th row 
             if(row_index==4):
                 try:
-                    # Check if black pawn recently moved to left field
-                    if(self.new_board[row_index][column_index-1]==12 and self.board[row_index][column_index-1]==0):
-                        field =self.get_field_string(row_index+1, column_index-1)
-                        reachable_fields.append(field)
-                except (KeyError, IndexError) as e:
-                    pass
-
-                try:
-                    # Check if black pawn recently moved to right field
-                    if(self.new_board[row_index][column_index+1]==12 and self.board[row_index][column_index+1]!=12):
-                        field =self.get_field_string(row_index+1, column_index+1)
-                        reachable_fields.append(field)
-                except (KeyError, IndexError) as e:
+                    for i in [-1,1]:
+                        # Check if black pawn recently moved to right field
+                        if(self.new_board[row_index][column_index+i]==12 and self.board[row_index][column_index+1]!=12):
+                            field =self.get_field_string(row_index+1, column_index+i)
+                            reachable_fields.append(field)
+                except (KeyError, IndexError, IndexException) as e:
                     pass
        
         # Analog logic as for white
@@ -169,41 +250,32 @@ class Game():
             if(self.new_board[row_index-1][column_index]==0):
                 field =self.get_field_string(row_index-1, column_index)
                 reachable_fields.append(field)
-
-            try:
-                if(self.new_board[row_index-1][column_index-1] in self.white_piece_numbers):
-                    field =self.get_field_string(row_index-1, column_index-1)
-                    reachable_fields.append(field)
-            except (KeyError, IndexError) as e:
-                pass
-
-            try:
-                if(self.new_board[row_index-1][column_index+1] in self.white_piece_numbers):
-                    field =self.get_field_string(row_index-1, column_index+1)
-                    reachable_fields.append(field)
-            except (KeyError, IndexError) as e:
-                pass
+ 
+            for i in [-1,1]:
+                try:
+                    field =self.get_field_string(row_index-1, column_index+i)
+                    if(self.new_board[row_index-1][column_index+1] in self.white_piece_numbers):
+                        reachable_fields.append(field)
+                    elif(self.new_board[row_index-1][column_index+i] in self.black_piece_numbers):
+                        protected_fields.append(field)
+                except (KeyError, IndexError, IndexException) as e:
+                    pass
             
             if(row_index==3):
-                try:
-                    if(self.new_board[row_index][column_index-1]==6 and self.board[row_index][column_index-1]!=6):
-                        field =self.get_field_string(row_index-1, column_index-1)
-                        reachable_fields.append(field)
-                except (KeyError, IndexError) as e:
-                    pass
-
-                try:
-                    if(self.new_board[row_index][column_index+1]==6 and self.board[row_index][column_index+1]!=6):
-                        field =self.get_field_string(row_index-1, column_index+1)
-                        reachable_fields.append(field)
-                except (KeyError, IndexError) as e:
-                    pass
-
-        return reachable_fields
+                for i in [-1,1]:
+                    try:
+                        if(self.new_board[row_index][column_index+i]==6 and self.board[row_index][column_index+i]!=6):
+                            field =self.get_field_string(row_index-1, column_index+i)
+                            reachable_fields.append(field)
+                    except (KeyError, IndexError, IndexException) as e:
+                        pass
+            
+        return reachable_fields, protected_fields
 
     def reachable_by_king(self, color, row_index, column_index):
         
         reachable_fields = []
+        protected_fields = []
 
         if(color=="w"):
             for i in [-1, 0, 1]:
@@ -211,9 +283,12 @@ class Game():
                     if(i == 0 and j == 0):
                         continue
                     try:
-                        if(self.new_board[row_index+i][column_index+j] in self.black_piece_numbers or self.new_board[row_index+i][column_index+j]==0):
-                            field =self.get_field_string(row_index+i, column_index+j)
+                        field =self.get_field_string(row_index+i, column_index+j)
+                        if(self.new_board[row_index+i][column_index+j] not in self.white_piece_numbers):
                             reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
+
                     except (KeyError,IndexError, IndexException) as e:
                         pass
         
@@ -223,18 +298,21 @@ class Game():
                     if(i == 0 and j == 0):
                         continue
                     try:
-                        if(self.new_board[row_index+i][column_index+j] in self.white_piece_numbers or self.new_board[row_index+i][column_index+j]==0):
-                            field =self.get_field_string(row_index+i, column_index+j)
+                        field =self.get_field_string(row_index+i, column_index+j)
+                        if(self.new_board[row_index+i][column_index+j] not in self.black_piece_numbers):
                             reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
                     except (KeyError, IndexError, IndexException) as e:
                         pass
-
-        return reachable_fields
+    
+        return reachable_fields, protected_fields
 
 
     def reachable_by_bishop_or_diagonal(self, color, row_index, column_index):
         
         reachable_fields = []
+        protected_fields = []
 
         if(color=="w"):
             for i in [-1, 1]:
@@ -242,14 +320,20 @@ class Game():
                     row_counter = row_index + i
                     column_counter = column_index + j
                     try:
-                        while(self.new_board[row_counter][column_counter] not in self.white_piece_numbers):
-                        
+                        while(self.new_board[row_counter][column_counter] == 0):     
                             field =self.get_field_string(row_counter, column_counter)
                             reachable_fields.append(field)
-                            if(self.new_board[row_counter][column_counter] in self.black_piece_numbers):
-                                break
                             row_counter += i
                             column_counter += j
+                    
+                        
+                        field =self.get_field_string(row_counter, column_counter)
+                        
+                        if(self.new_board[row_counter][column_counter] in self.black_piece_numbers):
+                            reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
+
 
                     except (KeyError, IndexError, IndexException) as e:
                         pass
@@ -260,46 +344,61 @@ class Game():
                     row_counter = row_index + i
                     column_counter = column_index + j
                     try:
-                        while(self.new_board[row_counter][column_counter] not in self.black_piece_numbers):
+                        while(self.new_board[row_counter][column_counter] == 0):
                             field =self.get_field_string(row_counter, column_counter)
                             reachable_fields.append(field)
-                            if(self.new_board[row_counter][column_counter] in self.white_piece_numbers):
-                                break
                             row_counter += i
                             column_counter += j
+
+                        field =self.get_field_string(row_counter, column_counter)
+                        
+                        if(self.new_board[row_counter][column_counter] in self.white_piece_numbers):
+                            reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
 
                     except (KeyError, IndexError, IndexException) as e:
                         pass
 
-        return reachable_fields
+        return reachable_fields, protected_fields
 
 
     def reachable_by_rook_or_straight(self, color, row_index, column_index):
         
         reachable_fields = []
+        protected_fields = []
 
         if(color=="w"):
             for i in [-1, 1]:
                 row_counter = row_index + i
                 try:
-                    while(self.new_board[row_counter][column_index] not in self.white_piece_numbers):
+                    while(self.new_board[row_counter][column_index] == 0):
                         field =self.get_field_string(row_counter, column_index)
                         reachable_fields.append(field)
-                        if(self.new_board[row_counter][column_index] in self.black_piece_numbers):
-                            break
                         row_counter += i
+                        
+                    field =self.get_field_string(row_counter, column_index)
+                    if(self.new_board[row_counter][column_index] in self.black_piece_numbers):
+                        reachable_fields.append(field)
+                    else:
+                        protected_fields.append(field)
+
 
                 except (KeyError, IndexError, IndexException) as e:
                     pass
             
                 column_counter = column_index + i
                 try:
-                    while(self.new_board[row_index][column_counter] not in self.white_piece_numbers):
+                    while(self.new_board[row_index][column_counter] == 0):
                         field =self.get_field_string(row_index, column_counter)
                         reachable_fields.append(field)
-                        if(self.new_board[row_index][column_counter] in self.black_piece_numbers):
-                            break
                         column_counter += i
+                    
+                    field =self.get_field_string(row_index, column_counter)
+                    if(self.new_board[row_index][column_counter] in self.black_piece_numbers):
+                        reachable_fields.append(field)
+                    else:
+                        protected_fields.append(field)
 
                 except (KeyError, IndexError, IndexException) as e:
                     pass
@@ -308,45 +407,56 @@ class Game():
             for i in [-1, 1]:
                 row_counter = row_index + i
                 try:
-                    while(self.new_board[row_counter][column_index] not in self.black_piece_numbers):
+                    while(self.new_board[row_counter][column_index] == 0):
                         field =self.get_field_string(row_counter, column_index)
                         reachable_fields.append(field)
-                        if(self.new_board[row_counter][column_index] in self.white_piece_numbers):
-                            break
                         row_counter += i
+                        
+                    field =self.get_field_string(row_counter, column_index)
+                    if(self.new_board[row_counter][column_index] in self.white_piece_numbers):
+                        reachable_fields.append(field)
+                    else:
+                        protected_fields.append(field)
 
                 except (KeyError, IndexError, IndexException) as e:
                     pass
             
                 column_counter = column_index + i
                 try:
-                    while(self.new_board[row_index][column_counter] not in self.black_piece_numbers):
+                    while(self.new_board[row_index][column_counter] == 0):
                         field =self.get_field_string(row_index, column_counter)
                         reachable_fields.append(field)
-                        if(self.new_board[row_index][column_counter] in self.white_piece_numbers):
-                            break
                         column_counter += i
+                    
+                    field =self.get_field_string(row_index, column_counter)
+                    if(self.new_board[row_index][column_counter] in self.white_piece_numbers):
+                        reachable_fields.append(field)
+                    else:
+                        protected_fields.append(field)
+
 
                 except (KeyError, IndexError, IndexException) as e:
                     pass
 
-        return reachable_fields
+        return reachable_fields, protected_fields
 
 
     def reachable_by_queen(self, color, row_index, column_index):
 
-        diagonal_fields = self.reachable_by_bishop_or_diagonal(color, row_index, column_index)
+        diagonal_fields, protected_diagonal = self.reachable_by_bishop_or_diagonal(color, row_index, column_index)
 
-        straight_fields = self.reachable_by_rook_or_straight(color, row_index, column_index)
+        straight_fields, protected_straight = self.reachable_by_rook_or_straight(color, row_index, column_index)
 
         reachable_fields = diagonal_fields + straight_fields
+        protected_fields = protected_diagonal + protected_straight
 
-        return reachable_fields
+        return reachable_fields, protected_fields
 
 
     def reachable_by_knight(self, color, row_index, column_index):
         
         reachable_fields = []
+        protected_fields = []
 
         if(color=="w"):
             for i in [-2,2]:
@@ -354,18 +464,24 @@ class Game():
                     try:
                         row_index1 = row_index + i
                         column_index1 = column_index +j
+                        field =self.get_field_string(row_index1, column_index1)
                         if(self.new_board[row_index1][column_index1] not in self.white_piece_numbers):
-                            field =self.get_field_string(row_index1, column_index1)
                             reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
+
+
                     except (KeyError, IndexError, IndexException) as e:
                         pass
 
                     try:
                         row_index2 = row_index + j
                         column_index2 = column_index +i
+                        field =self.get_field_string(row_index2, column_index2)
                         if(self.new_board[row_index2][column_index2] not in self.white_piece_numbers):
-                            field =self.get_field_string(row_index2, column_index2)
                             reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
                     except (KeyError, IndexError, IndexException) as e:
                         pass
         
@@ -375,23 +491,27 @@ class Game():
                     try:
                         row_index1 = row_index + i
                         column_index1 = column_index + j
+                        field =self.get_field_string(row_index1, column_index1)
                         if(self.new_board[row_index1][column_index1] not in self.black_piece_numbers):
-                            field =self.get_field_string(row_index1, column_index1)
                             reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
                     except (KeyError, IndexError, IndexException) as e:
                         pass
 
                     try:
                         row_index2 = row_index + j
                         column_index2 = column_index + i
+                        field =self.get_field_string(row_index2, column_index2)
                         if(self.new_board[row_index2][column_index2] not in self.black_piece_numbers):
-                            field =self.get_field_string(row_index2, column_index2)
                             reachable_fields.append(field)
+                        else:
+                            protected_fields.append(field)
                     except (KeyError, IndexError, IndexException) as e:
                         pass
 
 
-        return reachable_fields
+        return reachable_fields, protected_fields
 
     def get_field_string(self, row_index, column_index):
 
@@ -405,44 +525,116 @@ class Game():
     def get_all_reachable_fields(self):
         reachable_by_white = []
         reachable_by_black = []
+        protected_by_white = []
+        protected_by_black = []
+        fields_of_pieces_giving_check = []
+        path_of_threatening_pieces_to_king = []
         for row_index in range(8):
             for column_index in range(8):
-                if self.new_board[row_index][column_index] in self.chess_piece_dict:
+                if(self.new_board[row_index][column_index] in self.chess_piece_dict):
                     color = self.chess_piece_dict[self.new_board[row_index][column_index]][-1]
                     first_letter = self.chess_piece_dict[self.new_board[row_index][column_index]][0]
-                    reachable_fields = self.reachable_field_function_dict[first_letter](color, row_index, column_index)
-                    reachable_by_white.extend(reachable_fields) if color=="w" else reachable_by_black.extend(reachable_fields)
+                    reachable_fields, protected_fields = self.reachable_field_function_dict[first_letter](color, row_index, column_index)
 
-        return reachable_by_white, reachable_by_black
+                    if(color == "w"):
+                        reachable_by_white.extend(reachable_fields)
+                        protected_by_white.extend(protected_fields)
+                        if(self.black_kings_field in reachable_fields):
+                            fields_of_pieces_giving_check.append(self.get_field_string(row_index, column_index))
+                            if(first_letter in ["Q","B","R"]):
+                                path_of_threatening_pieces_to_king = get_path_to_king(row_index, column_index, color)
+                    if(color == "b"):
+                        reachable_by_black.extend(reachable_fields)
+                        protected_by_black.extend(protected_fields)
+                        if(self.white_kings_field in reachable_fields):
+                            fields_of_pieces_giving_check.append(self.get_field_string(row_index, column_index))
+                            # Only queen, bishop and rook have blockable path when giving check
+                            if(first_letter in ["Q","B","R"]):
+                                path_to_king = get_path_to_king(row_index, column_index, color)
+                                path_of_threatening_pieces_to_king.extend(path_to_king)
 
-    def check_for_check(self, reachable_by_white, reachable_by_black):
+
+
+        return reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, path_of_threatening_pieces_to_king
+
+    def get_path_to_king(self, row_index, column_index, color):
+
+        fields_in_path = []
+
+        if(color == "w"):
+            row_difference = self.black_kings_row_index - row_index
+            row_step = int(copysign(1, row_difference) if row_difference != 0 else row_difference)
+            row_counter = row_index + row_step
+
+            column_difference = self.black_kings_column_index - column_index
+            column_step = int(copysign(1, column_difference) if column_difference != 0 else column_difference)
+            column_counter = column_index + column_step
+
+            while not(row_counter == self.black_kings_row_index and column_counter == self.black_kings_column_index):
+                field = self.get_field_string(row_counter, column_counter)
+                fields_in_path.append(field)
+                row_counter += row_step
+                column_counter += column_step
+
+        if(color == "b"):
+            row_difference = self.white_kings_row_index - row_index
+            row_step = int(copysign(1, row_difference) if row_difference != 0 else row_difference)
+            row_counter = row_index + row_step
+
+            column_difference = self.white_kings_column_index - column_index
+            column_step = int(copysign(1, column_difference) if column_difference != 0 else column_difference)
+            column_counter = column_index + column_step
+
+            while not(row_counter == self.white_kings_row_index and column_counter == self.white_kings_column_index):
+                field = self.get_field_string(row_counter, column_counter)
+                fields_in_path.append(field)
+                row_counter += row_step
+                column_counter += column_step
+
+
+        return fields_in_path
+
+
+    def check_for_check(self, reachable_by_white, reachable_by_black, color):
         check_given = self.black_kings_field in reachable_by_white if color == "w" else self.white_kings_field in reachable_by_black
 
         return check_given
 
-    def check_for_castle(self, color, landing_column_index):
+    def check_for_castle(self, color):
         
         if(color=="w"):
-            if(landing_column_index == 6):
+            if(self.new_board[0][6]==1):
                 if(self.new_board[0][5]==5 and self.board[0][5]!=5):
                     return True
 
-            if(landing_column_index == 2):
+            if(self.new_board[0][2]==1):
                 if(self.new_board[0][3]==5 and self.board[0][3]!=5):
                     return True
         
         if(color=="b"):
-            if(landing_column_index == 6):
+            if(self.new_board[7][6]==7):
                 if(self.new_board[7][5]==11 and self.board[7][5]!=11):
                     return True
 
-            if(landing_column_index == 2):
+            if(self.new_board[7][2]==7):
                 if(self.new_board[7][3]==11 and self.board[7][3]!=11):
                     return True
 
         return False
 
-    def calcTransformation(self, frame, resolution_width, resolution_height):
+    def check_for_mate(reachable_fields, protected_by_opponent, fields_of_pieces_giving_check, color):
+        
+        kings_field = self.black_kings_field if color == "w" else self.white_kings_field
+
+        # Checken des Pfades irgendwie implementieren
+        # 
+
+        '''
+        die Felder die der König erreichen kann sind reachable - protected - reachable Gegner
+        und die Schach gebenden Felder > 1 oder nicht in reachable Freund
+        '''
+
+
 
     def calcTransformation(self, frame, resolution_width, resolution_height):
 
@@ -473,52 +665,3 @@ class Game():
         
         return M
 
-    def update_board(self, detections, key):
-        moved_piece = ""
-        reachable_by_white = []
-        reachable_by_black = []
-        landing_column_index = 0
-        landing_row_index = 0
-        origin_column_index = 0
-        origin_row_index = 0
-        capture = 0
-
-        for piece in detections:
-
-            #Get the detected pieces box horizontal and vertical center and retrieve according field
-            x = piece.Center[0]
-            y = piece.Center[1]
-            row_index,column_index = determine_board_position(x,y)
-
-            if(piece.ClassID%6==1):
-                if(piece.ClassID==1):
-                    self.white_kings_field = self.get_field_string(row_index, column_index)
-                if(piece.ClassID==7):
-                    self.black_kings_field = self.get_field_string(row_index, column_index)
-
-            # Update the piece on the field
-            self.new_board[row_index][column_index] = piece.ClassID
-
-            #If the currently stored piece is not the same as the detected piece, store the information for documentation.
-
-            # ROCHADE IST AUSNAHME
-            if(self.board[row_index][column_index] != piece.ClassID):
-                moved_piece = self.chess_piece_dict[piece.ClassID]
-                landing_row_index = row_index
-                landing_column_index = column_index
-            
-            #If the field has not been empty previously, flag the move as a capture
-                if(self.board[row_index][column_index] in self.chess_piece_dict):
-                    capture = 1
-
-        reachable_by_white, reachable_by_black = self.get_all_reachable_fields()
-
-        check_given = check_for_check(reachable_by_white, reachable_by_black, moved_piece[-1])
-
-        origin_row_index, origin_column_index = determine_origin(landing_row_index, landing_column_index)
-
-        notation = document_move(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_row_index, capture, check_given)
-
-        self.board = self.new_board
- 
-        key = ""
