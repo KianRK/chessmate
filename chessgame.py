@@ -17,7 +17,8 @@ from pynput import keyboard
 class Game():
         
     def __init__(self):
-        self.board = np.array([[5,4,3,2,1,3,4,5],[6,6,6,6,6,6,6,6],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[12,12,12,12,12,12,12,12],[11,10,9,8,7,9,10,11]], np.int16)
+        #self.board = np.array([[5,4,3,2,1,3,4,5],[6,6,6,6,6,6,6,6],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[12,12,12,12,12,12,12,12],[11,10,9,8,7,9,10,11]], np.int16)
+        self.board = np.array([[5,0,0,0,0,0,0,0],[0,3,0,1,0,4,0,0],[0,5,0,6,6,2,3,0],[0,0,10,0,0,0,0,0],[0,12,12,0,12,6,0,0],[9,0,8,0,0,4,0,0],[0,0,7,0,0,10,0,9],[0,0,0,0,0,0,11,0]], np.int16)
         
         self.board_history = []
 
@@ -34,13 +35,19 @@ class Game():
         self.white_piece_numbers = [1,2,3,4,5,6]
         self.black_piece_numbers = [7,8,9,10,11,12]
 
-        self.white_kings_field = "e2"
-        self.white_kings_row_index = 0
-        self.white_kings_column_index = 4
-
-        self.black_kings_field = "e8"
-        self.black_kings_row_index = 7
-        self.black_kings_column_index = 4
+        #self.white_kings_field = "e2"
+        #self.white_kings_row_index = 0
+        #self.white_kings_column_index = 4
+        self.white_kings_field = "d2"
+        self.white_kings_row_index = 1
+        self.white_kings_column_index = 3
+    
+        #self.black_kings_field = "e8"
+        #self.black_kings_row_index = 7
+        #self.black_kings_column_index = 4
+        self.black_kings_field = "c7"
+        self.black_kings_row_index = 6
+        self.black_kings_column_index = 2
 
         self.white_can_castle = True
         self.black_can_castle = True
@@ -63,13 +70,14 @@ class Game():
         en_passant = False
         pawn_promotion = False
 
+        print("UPDATE_BOARD CALLED!!!!!!!!!")
         for piece in detections:
 
+            print("Hier aber")
             #Get the detected pieces box horizontal and vertical center and retrieve according field
             x = piece.Center[0]
             y = piece.Center[1]
-            row_index, column_index = determine_board_position(x,y)
-
+            row_index, column_index = self.determine_board_position(x,y)
             if(piece.ClassID%6==1):
                 if(piece.ClassID==1):
                     self.white_kings_row_index = row_index
@@ -83,8 +91,9 @@ class Game():
             self.new_board[row_index][column_index] = piece.ClassID
 
             #If the currently stored piece is not the same as the detected piece, store the information for documentation.
-
+            print(f" Value: {self.board[row_index][column_index]} ID: {piece.ClassID}")
             if(self.board[row_index][column_index] != piece.ClassID):
+                print("Hier bin ich")
                 moved_piece = self.chess_piece_dict[piece.ClassID]
                 landing_row_index = row_index
                 landing_column_index = column_index
@@ -94,16 +103,16 @@ class Game():
                 if(self.board[row_index][column_index] in self.chess_piece_dict):
                     capture = True
 
-        if(moved_piece[0]="P"):
+        if(moved_piece[0]=="P"):
             en_passant = self.check_for_en_passant(landing_row_index, landing_column_index)
         elif(landing_row_index%7 == 0):
             pawn_promotion = self.check_for_pawn_promotion(landing_row_index, landing_column_index)
 
-        origin_row_index, origin_column_index = determine_origin(landing_row_index, landing_column_index)
+        origin_row_index, origin_column_index = self.determine_origin(landing_row_index, landing_column_index)
 
         reachable_by_white, reachable_by_black, protected_by_white, protected_by_black, fields_of_pieces_giving_check, path_to_king = self.get_all_reachable_fields()
         
-        check_given = len(field_of_piecex_giving_check > 0)
+        check_given = len(fields_of_pieces_giving_check) > 0
 
         '''if(check_given):
             if(moved_color == "w"):
@@ -115,7 +124,9 @@ class Game():
             stalemate = len(reachable_by_white) == 0 if moved_color == "w" else len(reachable_by_black) == 0
 '''
 
+        print(f"Moved piece: {moved_piece}")
         if(moved_piece[0] == "K" or moved_piece[0] == "R"):
+            print("Wurde doch gar nicht bewegt")
             castle = self.check_for_castle(moved_piece[-1])
 
         if(castle):
@@ -124,17 +135,19 @@ class Game():
             else:
                 self.black_can_castle = False
 
-        notation = document_move(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_row_index, capture, check_given, castle, en_passant, pawn_promotion, key)
+        notation = self.document_move(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, capture, check_given, castle, en_passant, pawn_promotion, key)
 
         self.board_history.append(self.board)
         
-        self.board = self.new_board
+        print(self.board)
+        print(self.new_board)
+        self.board = copy.deepcopy(self.new_board)
  
         key = ""
 
 
 
-    def document_move(self, moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, capture, castle, check_given, en_passant, pawn_promotion, key):
+    def document_move(self, moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, capture, check_given, castle, en_passant, pawn_promotion, key):
 
         if(castle):
             notation = self.document_castle(moved_piece[-1], check_given)
@@ -563,7 +576,7 @@ class Game():
                             fields_of_pieces_giving_check.append(self.get_field_string(row_index, column_index))
                             # Only queen, bishop and rook have blockable path when giving check
                             if(first_letter in ["Q","B","R"]):
-                                path_to_king = get_path_to_king(row_index, column_index, color)
+                                path_to_king = self.get_path_to_king(row_index, column_index, color)
                                 path_of_threatening_pieces_to_king.extend(path_to_king)
         
         '''reachable_by_white_king = self.reachable_by_king("w", self.white_kings_row_index, self.white_kings_column_index)
@@ -651,19 +664,23 @@ class Game():
         if(color=="w"):
             if(self.new_board[0][6]==1):
                 if(self.new_board[0][5]==5 and self.board[0][5]!=5):
+                    print("F1")
                     return True
 
             if(self.new_board[0][2]==1):
                 if(self.new_board[0][3]==5 and self.board[0][3]!=5):
+                    print("D1")
                     return True
         
         if(color=="b"):
             if(self.new_board[7][6]==7):
                 if(self.new_board[7][5]==11 and self.board[7][5]!=11):
+                    print("F8")
                     return True
 
             if(self.new_board[7][2]==7):
                 if(self.new_board[7][3]==11 and self.board[7][3]!=11):
+                    print("D8")
                     return True
 
         return False
@@ -731,12 +748,12 @@ class Game():
     def determine_board_position(self, x, y):
         width = 1640/8
         height = 1232/8
-        horizontal = x//width 
-        vertical = y//height
+        column_index = x//width 
+        row_index = 7 - y//height
         
-        return int(horizontal), int(vertical)
+        return int(row_index), int(column_index)
 
-    def determine_origin(self, landing_row, landing_columnn):
+    def determine_origin(self, landing_row, landing_column):
             #Iterate over the board. 
             for k in range(8):
                 for l in range(8):

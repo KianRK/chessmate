@@ -67,7 +67,6 @@ def main():
 
     while cam.isOpened():
         global key
-        print(f"Key that was pressed: {key}")
         ret, cv_image = cam.read()
         cv_image = cv2.rotate(cv_image, cv2.ROTATE_90_CLOCKWISE)
         cv_img = cv2.warpPerspective(cv_image, M, (resolution_width, resolution_height))
@@ -84,6 +83,7 @@ def main():
         display.Render(converted_img)
         if(key in ["m","d", "n"]):
             game.update_board(detections, key)
+            key = ""
         #cv2.imshow('CV2', cv_img)
         #k = cv2.waitKey(500)
         #if counter%50==0:
@@ -97,14 +97,40 @@ def main():
 
     cam.release()
 
+def calcTransformation(frame, resolution_width, resolution_height):
+        '''
+        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        pt1x = int(input('X-Coordinate of point 1:'))
+        pt1y = int(input('Y-Coordinate of point 1:'))
+        pt2x = int(input('X-Coordinate of point 2:'))
+        pt2y = int(input('Y-Coordinate of point 2:'))
+        pt3x = int(input('X-Coordinate of point 3:'))
+        pt3y = int(input('Y-Coordinate of point 3:'))
+        pt4x = int(input('X-Coordinate of point 4:'))
+        pt4y = int(input('Y-Coordinate of point 4:'))
+        '''
+        pt1x = 113
+        pt1y = 321
+        pt2x = 1051
+        pt2y = 340
+        pt3x = 95
+        pt3y = 1259
+        pt4x = 1030
+        pt4y = 1278
+
+        originCornerPoints = np.float32([[pt1x,pt1y], [pt2x, pt2y], [pt3x, pt3y], [pt4x, pt4y]])
+        transformedCornerPoints = np.float32([[0, 0], [resolution_width, 0], [0, resolution_height], [resolution_width, resolution_height]])
+
+        M = cv2.getPerspectiveTransform(originCornerPoints, transformedCornerPoints)
+
+        return M
+
 def on_press(event_key):
     global key
     try:
-        print(f"alphanumeric key {event_key.char} pressed")
         key =event_key.char
 
     except AttributeError:
-        print(f"special key {event_key} pressed")
         key = event_key
 
 if(__name__=="__main__"):
