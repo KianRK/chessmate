@@ -566,8 +566,8 @@ class Game():
                         if(self.black_kings_field in reachable_fields):
                             fields_of_pieces_giving_check.append(self.get_field_string(row_index, column_index))
                             if(first_letter in ["Q","B","R"]):
-                                path_to_king = get_path_to_king(row_index, column_index, color)
-                                path_of_threatening_pieces_to_king = get_path_to_king(path_to_king)
+                                path_to_king = self.get_path_to_king(row_index, column_index, color)
+                                path_of_threatening_pieces_to_king = self.get_path_to_king(path_to_king)
 
                     if(color == "b"):
                         reachable_by_black.extend(reachable_fields)
@@ -685,24 +685,24 @@ class Game():
 
         return False
 
-    def check_for_mate(self, reachable_by_white, reachable_by_black, protected_by_opponent, fields_of_pieces_giving_check, path_to_king, color):
+    # def check_for_mate(self, reachable_by_white, reachable_by_black, protected_by_opponent, fields_of_pieces_giving_check, path_to_king, color):
         
-        if(color == "w"):
-            kings_field = self.black_kings_field
-            kings_row_index = self.black_kings_row_index
-            kings_column_index = self.black_kings_column_index
-            reachable_by_black_king = self.reachable_by_king("b", kings_row_index, kings_column_index)
-            for field in reachable_by_black_king:
-                if(field in reachable_by_white+protected_by_white):
-                    reachable_by_black_king.remove(field)
-                    reachable_by_black.remove(field)
-            if(len(reachable_by_black_king) == 0):
-                if(len(fields_of_pieces_giving_check) == 1):
-                    for field in reachable_by_white:
-                        if(field in fields_of_pieces_giving_check+path_to_king):
-                            return False
-                        else:
-                            return True
+    #     if(color == "w"):
+    #         kings_field = self.black_kings_field
+    #         kings_row_index = self.black_kings_row_index
+    #         kings_column_index = self.black_kings_column_index
+    #         reachable_by_black_king = self.reachable_by_king("b", kings_row_index, kings_column_index)
+    #         for field in reachable_by_black_king:
+    #             if(field in reachable_by_white+protected_by_white):
+    #                 reachable_by_black_king.remove(field)
+    #                 reachable_by_black.remove(field)
+    #         if(len(reachable_by_black_king) == 0):
+    #             if(len(fields_of_pieces_giving_check) == 1):
+    #                 for field in reachable_by_white:
+    #                     if(field in fields_of_pieces_giving_check+path_to_king):
+    #                         return False
+    #                     else:
+    #                         return True
 
 
 
