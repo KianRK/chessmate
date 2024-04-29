@@ -6,6 +6,7 @@ import argparse
 import sys
 import copy
 import os
+import datetime
 
 from CustomExceptions import IndexException
 from chessgame import Game
@@ -46,7 +47,7 @@ def main():
 
     os.chdir(notation_dir)
 
-    net = detectNet(modelpath, labels=labelpath, input_blob="input_0", output_cvg="scores", output_bbox="boxes")
+    net = detectNet(args.modelpath, labels=args.labelpath, input_blob="input_0", output_cvg="scores", output_bbox="boxes")
     net.SetConfidenceThreshold(0.15)
     net.SetClusteringThreshold(0.33)
     
@@ -59,6 +60,9 @@ def main():
     listener.start()
 
     game = Game()
+    move_number = 1
+    now = datetime.datetime.now
+    game.create_notation_file(now, args.white, args.black)
 
     while cam.isOpened():
         global key
@@ -76,6 +80,7 @@ def main():
         if(key in ["m","d", "n"]):
             notation = game.update_board(detections, key)
             key = ""
+            game.add_notation_to_file(now, move_number, notation)
 
     cam.release()
 

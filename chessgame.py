@@ -766,7 +766,7 @@ class Game():
 
             return origin_row, origin_column
 
-    def create_notation_file(date, white_player, black_player):
+    def create_notation_file(self, date, white_player, black_player):
         filename = f"Game_{date.day}_{date.month}_{date.year}_{date.hour}_{date.minute}"
         if(white_player ==""):
             white_player = "?"
@@ -777,3 +777,11 @@ class Game():
         with open(filename, "a") as file:
             file.write(datestring + "\n")
             file.write(playerstring + "\n")
+
+    def add_notation_to_file(self, date, move_number, notation):
+        filename = f"Game_{date.day}_{date.month}_{date.year}_{date.hour}_{date.minute}"
+        move_notation = f"{move_number}. " + notation
+        with open(filename, "a") as file:
+            file.write(move_notation + "\n")
+
+
