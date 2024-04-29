@@ -145,7 +145,7 @@ class Game():
  
         key = ""
 
-
+        return notation
 
     def document_move(self, moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, capture, check_given, castle, en_passant, pawn_promotion, key):
 
@@ -765,3 +765,15 @@ class Game():
                         origin_column = l
 
             return origin_row, origin_column
+
+    def create_notation_file(date, white_player, black_player):
+        filename = f"Game_{date.day}_{date.month}_{date.year}_{date.hour}_{date.minute}"
+        if(white_player ==""):
+            white_player = "?"
+        if(black_player == ""):
+            black_player = "?"
+        datestring = f"[{date.day}.{date.month}.{date.year} {date.hour}:{date.minute}"
+        playerstring = f"[white: {white_player} vs. black: {black_player}]"
+        with open(filename, "a") as file:
+            file.write(datestring + "\n")
+            file.write(playerstring + "\n")

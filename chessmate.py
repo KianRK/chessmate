@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import sys
 import copy
+import os
 
 from CustomExceptions import IndexException
 from chessgame import Game
@@ -19,26 +20,17 @@ def main():
     
     #creating possibility to define path to object detection model and label file
     parser = argparse.ArgumentParser(description="Detecting chess pieces from a live match and documenting the moves taken")
-    parser.add_argument("--modelpath", nargs='?', default="")
-    parser.add_argument("--labelpath", nargs='?', default="")
+    parser.add_argument("--modelpath", nargs='?', default="/home/kian/jetson-inference/python/training/detection/ssd/models/model3/ssd-mobilenet.onnx")
+    parser.add_argument("--labelpath", nargs='?', default="/home/kian/jetson-inference/python/training/detection/ssd/models/mymodels/labels.txt")
     parser.add_argument("--headless", nargs='?', default="")
     parser.add_argument("--videomode", nargs='?', type=int, default=1, help="determine resolution. 1:1640x1232, 2:1920x1080 (default 1)")
+    parser.add_argument("--notationdir", nargs='?', default=".", description="Directory to save the notation file"))
+    parser.add_argument("--white", nargs='?', default="", description="Player playing the white pieces")
+    parser.add_argument("--black", nargs='?', default="", description="Player playing the black pieces")
     args = parser.parse_args(sys.argv[1:])
 
     resolution_width = 1640
     resolution_height = 1232
-
-    #if modelpath and labelpath are not given fall back to default values. Otherwise
-    #adopt cli arguments
-    if(args.modelpath == ""):
-        modelpath = "/home/kian/jetson-inference/python/training/detection/ssd/models/model3/ssd-mobilenet.onnx"
-    else:
-        modelpath = args.modelpath
-
-    if(args.labelpath == ""):
-        labelpath = "/home/kian/jetson-inference/python/training/detection/ssd/models/mymodels/labels.txt"
-    else:
-        labelpath = args.labelpath
 
     if(args.videomode==2):
         resolution_width = 1920
@@ -49,7 +41,10 @@ def main():
         display = videoOutput("webrtc://@:8554/stream", ["--headless"])
     else:
         display = videoOutput("webrtc://@:8554/stream")
+    
+    notation_dir = args.notationdir
 
+    os.chdir(notation_dir)
 
     net = detectNet(modelpath, labels=labelpath, input_blob="input_0", output_cvg="scores", output_bbox="boxes")
     net.SetConfidenceThreshold(0.15)
@@ -76,24 +71,11 @@ def main():
         converted_img = cudaFromNumpy(cv_img)
 
 
-#       cuda_rgb = cudaAllocMapped(width=converted_img.width, height=converted_img.height, format='rgb8')
-#       cuda_img = cudaAllocMapped(width=converted_img.width, height=converted_img.height, format='gray8')
-        #cudaConvertColor(cuda_rgb, cuda_img)
         detections = net.Detect(converted_img)
         display.Render(converted_img)
         if(key in ["m","d", "n"]):
-            game.update_board(detections, key)
+            notation = game.update_board(detections, key)
             key = ""
-        #cv2.imshow('CV2', cv_img)
-        #k = cv2.waitKey(500)
-        #if counter%50==0:
-        #    update_board(detections)
-        #if k==-1:
-        #    continue
-        #if k == ord('d'):
-        #    update_board(detections)
-        #print("Loops durchlaufen: {}\nTaste: {}".format(counter, k))
-        #counter += 1
 
     cam.release()
 
