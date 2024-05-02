@@ -74,21 +74,23 @@ class TestDetection(unittest.TestCase):
     def test_determine_board_position(self):
         
         game = Game()
-        
+       
+        # 205 pixel per column
+        # 154 pixel per row
         x1 = 150
         y1 = 150
-        res_x1, res_y1 = game.determine_board_position(x1, y1)
-        self.assertListEqual([res_x1, res_y1], [0, 0])
+        res_column1, res_row1 = game.determine_board_position(x1, y1)
+        self.assertListEqual([res_column1, res_row1], [7, 0])
         
         x2 = 1200
         y2 = 740
-        res_x2, res_y2 = game.determine_board_position(x2, y2)     
-        self.assertListEqual([res_x2, res_y2], [5, 4])
+        res_column2, res_row2 = game.determine_board_position(x2, y2)     
+        self.assertListEqual([res_column2, res_row2], [3, 5])
         
         x3 = 790
         y3 = 1210
-        res_x3, res_y3 = game.determine_board_position(x3, y3)
-        self.assertListEqual([res_x3, res_y3], [3, 7])
+        res_column3, res_row3 = game.determine_board_position(x3, y3)
+        self.assertListEqual([res_column3, res_row3], [0, 3])
 
     def test_get_all_reachable_fields(self):
 
@@ -179,7 +181,7 @@ class TestDetection(unittest.TestCase):
         
         expected_notation1 = "Ba1-f6"
         
-        res_notation1 = game.document_move(moved_piece1, origin_row1, origin_column1, landing_row1, landing_column1, capture1, False)
+        res_notation1 = game.document_move(moved_piece1, origin_row1, origin_column1, landing_row1, landing_column1, capture1, False, False, False, False, "n")
         self.assertEqual(res_notation1, expected_notation1)
 
 
@@ -192,7 +194,7 @@ class TestDetection(unittest.TestCase):
 
         expected_notation2 = "Ng5xh7"
         
-        res_notation2 = game.document_move(moved_piece2, origin_row2, origin_column2, landing_row2, landing_column2, capture2, False)
+        res_notation2 = game.document_move(moved_piece2, origin_row2, origin_column2, landing_row2, landing_column2, capture2, False, False, False, False, False)
         self.assertEqual(res_notation2, expected_notation2)
 
     def test_document_en_passant(self):
