@@ -24,9 +24,9 @@ def main():
     parser.add_argument("--modelpath", nargs='?', default="/home/kian/jetson-inference/python/training/detection/ssd/models/model3/ssd-mobilenet.onnx")
     parser.add_argument("--labelpath", nargs='?', default="/home/kian/jetson-inference/python/training/detection/ssd/models/mymodels/labels.txt")
     parser.add_argument("--headless", nargs='?', default="")
-    parser.add_argument("--notationdir", nargs='?', default=".", description="Directory to save the notation file")
-    parser.add_argument("--white", nargs='?', default="", description="Player playing the white pieces")
-    parser.add_argument("--black", nargs='?', default="", description="Player playing the black pieces")
+    parser.add_argument("--notationdir", nargs='?', default=".", help="Directory to save the notation file")
+    parser.add_argument("--white", nargs='?', default="", help="Player playing the white pieces")
+    parser.add_argument("--black", nargs='?', default="", help="Player playing the black pieces")
     args = parser.parse_args(sys.argv[1:])
 
     resolution_width = 1640
@@ -56,7 +56,7 @@ def main():
 
     game = Game()
     move_number = 1
-    now = datetime.datetime.now
+    now = datetime.datetime.now()
     game.create_notation_file(now, args.white, args.black)
 
     while cam.isOpened():
@@ -76,6 +76,9 @@ def main():
             notation = game.update_board(detections, key)
             key = ""
             game.add_notation_to_file(now, move_number, notation)
+        if(key=="q"):
+            break
+
 
     cam.release()
 
