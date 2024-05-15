@@ -24,18 +24,13 @@ def main():
     parser.add_argument("--modelpath", nargs='?', default="/home/kian/jetson-inference/python/training/detection/ssd/models/model3/ssd-mobilenet.onnx")
     parser.add_argument("--labelpath", nargs='?', default="/home/kian/jetson-inference/python/training/detection/ssd/models/mymodels/labels.txt")
     parser.add_argument("--headless", nargs='?', default="")
-    parser.add_argument("--videomode", nargs='?', type=int, default=1, help="determine resolution. 1:1640x1232, 2:1920x1080 (default 1)")
-    parser.add_argument("--notationdir", nargs='?', default=".", description="Directory to save the notation file"))
+    parser.add_argument("--notationdir", nargs='?', default=".", description="Directory to save the notation file")
     parser.add_argument("--white", nargs='?', default="", description="Player playing the white pieces")
     parser.add_argument("--black", nargs='?', default="", description="Player playing the black pieces")
     args = parser.parse_args(sys.argv[1:])
 
     resolution_width = 1640
     resolution_height = 1232
-
-    if(args.videomode==2):
-        resolution_width = 1920
-        resolution_height = 1080
    
     #Use chrome browser to display stream. Hiding of IP for WebRTC must be disabled
     if(args.headless=="yes"):

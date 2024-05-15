@@ -70,10 +70,8 @@ class Game():
         en_passant = False
         pawn_promotion = False
 
-        print("UPDATE_BOARD CALLED!!!!!!!!!")
         for piece in detections:
 
-            print("Hier aber")
             #Get the detected pieces box horizontal and vertical center and retrieve according field
             x = piece.Center[0]
             y = piece.Center[1]
@@ -91,9 +89,7 @@ class Game():
             self.new_board[row_index][column_index] = piece.ClassID
 
             #If the currently stored piece is not the same as the detected piece, store the information for documentation.
-            print(f" Value: {self.board[row_index][column_index]} ID: {piece.ClassID}")
             if(self.board[row_index][column_index] != piece.ClassID):
-                print("Hier bin ich")
                 moved_piece = self.chess_piece_dict[piece.ClassID]
                 landing_row_index = row_index
                 landing_column_index = column_index
@@ -124,9 +120,7 @@ class Game():
             stalemate = len(reachable_by_white) == 0 if moved_color == "w" else len(reachable_by_black) == 0
 '''
 
-        print(f"Moved piece: {moved_piece}")
         if(moved_piece[0] == "K" or moved_piece[0] == "R"):
-            print("Wurde doch gar nicht bewegt")
             castle = self.check_for_castle(moved_piece[-1])
 
         if(castle):
@@ -139,8 +133,6 @@ class Game():
 
         self.board_history.append(self.board)
         
-        print(self.board)
-        print(self.new_board)
         self.board = copy.deepcopy(self.new_board)
  
         key = ""
@@ -151,17 +143,14 @@ class Game():
 
         if(castle):
             notation = self.document_castle(moved_piece[-1], check_given)
-            print(notation)
             return notation
 
         if(en_passant):
             notation = self.document_en_passant(origin_row_index, origin_column_index, landing_row_index, landing_column_index, check_given)
-            print(notation)
             return notation
 
         if(pawn_promotion):
             notation = self.document_pawn_promotion(moved_piece, origin_row_index, origin_column_index, landing_row_index, landing_column_index, check_given)
-            print(notation)
             return notation
 
         piece_letter = moved_piece[0]
@@ -178,18 +167,15 @@ class Game():
         
         if(key=="m"):
             notation += "#"
-            print(notation)
             return notation
 
         if(key=="d"):
             notation = "="
-            print(notation)
             return notation
 
         if(check_given):
             notation += "#"
 
-        print(notation)
         return notation
 
     def document_en_passant(self, origin_row_index, origin_column_index, landing_row_index, landing_column_index, check_given):
@@ -664,23 +650,19 @@ class Game():
         if(color=="w"):
             if(self.new_board[0][6]==1):
                 if(self.new_board[0][5]==5 and self.board[0][5]!=5):
-                    print("F1")
                     return True
 
             if(self.new_board[0][2]==1):
                 if(self.new_board[0][3]==5 and self.board[0][3]!=5):
-                    print("D1")
                     return True
         
         if(color=="b"):
             if(self.new_board[7][6]==7):
                 if(self.new_board[7][5]==11 and self.board[7][5]!=11):
-                    print("F8")
                     return True
 
             if(self.new_board[7][2]==7):
                 if(self.new_board[7][3]==11 and self.board[7][3]!=11):
-                    print("D8")
                     return True
 
         return False
