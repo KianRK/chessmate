@@ -795,7 +795,7 @@ class Game():
             white_player = "?"
         if (black_player == ""):
             black_player = "?"
-        datestring = f"[{date.day}.{date.month}.{date.year} {date.hour}:{date.minute}"
+        datestring = f"[{date.day}.{date.month}.{date.year} {date.hour}:{date.minute}]"
         playerstring = f"[white: {white_player} vs. black: {black_player}]"
         with open(filename, "a") as file:
             file.write(datestring + "\n")

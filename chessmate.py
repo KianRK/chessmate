@@ -56,8 +56,8 @@ def main():
 
     game = Game()
     move_number = 1
-    now = datetime.datetime.now()
-    game.create_notation_file(now, args.white, args.black)
+    game_date = datetime.datetime.now()
+    game.create_notation_file(game_date, args.white, args.black)
 
     while cam.isOpened():
         global key
@@ -75,7 +75,8 @@ def main():
         if(key in ["m","d", "n"]):
             notation = game.update_board(detections, key)
             key = ""
-            game.add_notation_to_file(now, move_number, notation)
+            game.add_notation_to_file(game_date, move_number, notation)
+            move_number += 1
         if(key=="q"):
             break
 
