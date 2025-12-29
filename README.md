@@ -11,7 +11,6 @@
 - [Architecture](#architecture)  
 - [Technologies Used](#technologies-used)  
 - [Getting Started](#getting-started)  
-- [Usage](#usage)  
 - [Project Structure](#project-structure)  
 - [Limitations & Future Work](#limitations--future-work)  
 ---
@@ -101,21 +100,7 @@ pip install -r requirements.txt
 
 git clone https://github.com/KianRK/chessmate.git
 cd chessmate
-```
-## Usage
-```bash
-#    Note: Adjust file paths below to match your repository organization.
- Chess Move Detection with video feed (headless mode available):
-
-
-
-
-Output
-
-The system prints:
-
-    
-    Logged moves saved to a text file
+python3 src/chessmate
 ```
 ## Project Structure
 
